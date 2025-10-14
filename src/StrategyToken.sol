@@ -1,16 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ERC20} from "solady/tokens/ERC20.sol";
-import {Ownable} from "solady/auth/Ownable.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {ReentrancyGuard} from "solady/utils/ReentrancyGuard.sol";
 
+import {ERC20} from "solady/tokens/ERC20.sol";
 import {Pausable} from "./utils/Pausable.sol";
 import {QuadraticCurve} from "./lib/QuadraticCurve.sol";
 import {QuadraticCurveSpread} from "./lib/QuadraticCurveSpread.sol";
 
-contract StrategyToken is ERC20, ReentrancyGuard, Ownable, Pausable {
+contract StrategyToken is ERC20, ReentrancyGuard, Pausable {
     using QuadraticCurve for QuadraticCurve.Params;
     using QuadraticCurveSpread for QuadraticCurveSpread.Params;
 

@@ -1,3 +1,4 @@
 @openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/
+@limitbreak/creator-token-standards/=lib/creator-token-standards/src/
 forge-std/=lib/forge-std/src/
 solady/=lib/solady/src/

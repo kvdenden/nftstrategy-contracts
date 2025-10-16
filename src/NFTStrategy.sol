@@ -2,6 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {ERC721} from "solady/tokens/ERC721.sol";
+import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 
 import {IStrategyToken} from "./interfaces/IStrategyToken.sol";
 
@@ -12,9 +13,14 @@ contract NFTStrategy is AuctionHouse, TokenBucket {
     IStrategyToken public token;
     ERC721 public nft;
 
+    uint256 public constant SYNC_REWARD_BPS = 50; // 0.5%
+    uint256 public constant SYNC_THRESHOLD = 0.1 ether;
+
     error NotNFTOwner();
 
     event NFTBought(uint256 indexed tokenId, uint256 price);
+
+    event RewardPaid(address indexed recipient, uint256 reward);
 
     /// @param _token The address of the strategy token contract.
     /// @param _nft The address of the NFT contract.
@@ -55,9 +61,18 @@ contract NFTStrategy is AuctionHouse, TokenBucket {
         return _availableTokens();
     }
 
-    function syncSurplus() external {
-        // TODO: add incentive/reward for syncing surplus
-        _sync();
+    function syncSurplus() external nonReentrant {
+        uint256 capacity = _capacity();
+        uint256 newCapacity = token.surplus();
+        if (_isFull() && _lastUpdate() < block.number && newCapacity > capacity + SYNC_THRESHOLD) {
+            uint256 reward = SYNC_REWARD_BPS * (newCapacity - capacity) / 10_000;
+            token.useSurplus(reward);
+            SafeTransferLib.safeTransferETH(msg.sender, reward);
+
+            emit RewardPaid(msg.sender, reward);
+        }
+
+        _sync(token.surplus());
     }
 
     receive() external payable {} // can receive ETH
@@ -76,10 +91,7 @@ contract NFTStrategy is AuctionHouse, TokenBucket {
     function _useSurplus(uint256 amount) internal {
         _consumeTokens(amount);
         token.useSurplus(amount);
-        _sync();
-    }
 
-    function _currentCapacity() internal view override returns (uint256) {
-        return token.surplus();
+        _sync(token.surplus());
     }
 }

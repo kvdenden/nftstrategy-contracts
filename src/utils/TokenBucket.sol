@@ -15,12 +15,15 @@ abstract contract TokenBucket {
 
     Bucket public bucket;
 
-    constructor(uint256 _capacity, uint256 _refillRate) {
+    event TokenBucketUpdated(uint256 capacity, uint256 tokens);
+    event TokensConsumed(uint256 amount);
+
+    constructor(uint256 capacity, uint256 refillRate) {
         bucket = Bucket({
-            capacity: _capacity,
+            capacity: capacity,
             tokens: 0,
             lastUpdate: block.number.toUint64(),
-            refillRate: _refillRate.toUint64()
+            refillRate: refillRate.toUint64()
         });
     }
 
@@ -28,6 +31,22 @@ abstract contract TokenBucket {
     function _availableTokens() internal view returns (uint256) {
         Bucket memory b = bucket;
         return _availableTokens(b);
+    }
+
+    function _capacity() internal view returns (uint256) {
+        return bucket.capacity;
+    }
+
+    function _lastUpdate() internal view returns (uint256) {
+        return bucket.lastUpdate;
+    }
+
+    function _refillRate() internal view returns (uint256) {
+        return bucket.refillRate;
+    }
+
+    function _isFull() internal view returns (bool) {
+        return _availableTokens() == _capacity();
     }
 
     /// @dev Consumes the given amount of tokens from the bucket.
@@ -39,18 +58,21 @@ abstract contract TokenBucket {
         b.tokens = (tokens - amount).toUint128();
         b.lastUpdate = block.number.toUint64();
         bucket = b;
+
+        emit TokensConsumed(amount);
     }
 
-    /// @dev Updates bucket state based on current capacity and available tokens.
-    function _sync() internal {
+    /// @dev Updates bucket state.
+    function _sync(uint256 newCapacity) internal {
         Bucket memory b = bucket;
         uint256 tokens = _availableTokens(b);
-        uint256 capacity = _currentCapacity();
 
-        b.capacity = capacity;
-        b.tokens = tokens > capacity ? capacity.toUint128() : tokens.toUint128();
+        b.capacity = newCapacity;
+        b.tokens = tokens > newCapacity ? newCapacity.toUint128() : tokens.toUint128();
         b.lastUpdate = block.number.toUint64();
         bucket = b;
+
+        emit TokenBucketUpdated(newCapacity, tokens);
     }
 
     function _availableTokens(Bucket memory b) internal view virtual returns (uint256) {
@@ -60,10 +82,5 @@ abstract contract TokenBucket {
         uint256 tokens = b.tokens + elapsed * b.refillRate;
 
         return tokens > capacity ? capacity : tokens;
-    }
-
-    /// @dev Override to change bucket capacity dynamically
-    function _currentCapacity() internal view virtual returns (uint256) {
-        return bucket.capacity;
     }
 }

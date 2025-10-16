@@ -44,10 +44,7 @@ abstract contract AuctionHouse is ReentrancyGuard {
 
         auctionId = _nextAuctionId++;
         auction = Auction({
-            active: true,
-            auctionId: auctionId,
-            tokenId: tokenId,
-            startTime: block.timestamp
+            active: true, auctionId: auctionId, tokenId: tokenId, startTime: block.timestamp
         });
         emit AuctionStarted(auctionId, tokenId);
     }

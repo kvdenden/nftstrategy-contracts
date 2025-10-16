@@ -59,9 +59,7 @@ contract StrategyToken is ERC20, ReentrancyGuard, Ownable, Pausable {
         protocolFeeRecipient = _feeRecipient;
 
         curve = QuadraticCurveSpread.Params({
-            p: QuadraticCurve.Params({p0: 0, k: _k}),
-            buySpread: FEE_RATE,
-            sellSpread: FEE_RATE
+            p: QuadraticCurve.Params({p0: 0, k: _k}), buySpread: FEE_RATE, sellSpread: FEE_RATE
         });
     }
 
@@ -108,7 +106,11 @@ contract StrategyToken is ERC20, ReentrancyGuard, Ownable, Pausable {
         address from,
         address receiver,
         uint256 minAmountOut // minimum collateral returned, needed for slippage protection
-    ) external payable nonReentrant {
+    )
+        external
+        payable
+        nonReentrant
+    {
         require(amount > 0, "Amount must be > 0");
 
         uint256 supply = totalSupply();

@@ -25,6 +25,9 @@ contract StrategyToken is ERC20, ReentrancyGuard, Ownable, Pausable {
 
     address public strategy;
 
+    string internal _name;
+    string internal _symbol;
+
     /// @dev Emitted during a mint call
     event Mint(address indexed by, address indexed to, uint256 assets, uint256 tokens);
 
@@ -62,12 +65,12 @@ contract StrategyToken is ERC20, ReentrancyGuard, Ownable, Pausable {
         });
     }
 
-    function name() public pure override returns (string memory) {
-        return "Strategy Token";
+    function name() public view override returns (string memory) {
+        return _name;
     }
 
-    function symbol() public pure override returns (string memory) {
-        return "ST";
+    function symbol() public view override returns (string memory) {
+        return _symbol;
     }
 
     /// @dev Returns the collateral required to mint the given token amount.
@@ -159,6 +162,14 @@ contract StrategyToken is ERC20, ReentrancyGuard, Ownable, Pausable {
         uint256 deferred_ = (base_ - reserve_) * (10000 - PROTOCOL_FEE_BPS) / 10000;
 
         return balance - reserve_ - deferred_;
+    }
+
+    /// @dev Sets the name and symbol of the token.
+    /// @param name_ The new name of the token.
+    /// @param symbol_ The new symbol of the token.
+    function setNameAndSymbol(string memory name_, string memory symbol_) external onlyOwner {
+        _name = name_;
+        _symbol = symbol_;
     }
 
     /// @dev Sets the strategy contract address.

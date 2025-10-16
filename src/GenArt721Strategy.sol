@@ -10,7 +10,12 @@ interface IGenArt721 {
 contract GenArt721Strategy is NFTStrategy {
     uint256 public projectId;
 
-    constructor(address _token, address _nft, uint256 _projectId) NFTStrategy(_token, _nft) {
+    /// @param _token The address of the strategy token contract.
+    /// @param _nft The address of the NFT contract.
+    /// @param _projectId The artblocks project ID.
+    constructor(address _token, address _nft, uint256 _projectId)
+        NFTStrategy(_token, _nft, 0.01 ether)
+    {
         projectId = _projectId;
     }
 

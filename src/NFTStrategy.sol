@@ -1,24 +1,27 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import {ERC721} from "solady/tokens/ERC721.sol";
+
 import {IStrategyToken} from "./interfaces/IStrategyToken.sol";
 
 import {AuctionHouse} from "./AuctionHouse.sol";
+import {TokenBucket} from "./utils/TokenBucket.sol";
 
-import {ERC721} from "solady/tokens/ERC721.sol";
-import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
-
-contract NFTStrategy is AuctionHouse {
+contract NFTStrategy is AuctionHouse, TokenBucket {
     IStrategyToken public token;
     ERC721 public nft;
-
-    uint256 public constant REWARD = 0.01 ether;
 
     error NotNFTOwner();
 
     event NFTBought(uint256 indexed tokenId, uint256 price);
 
-    constructor(address _token, address _nft) {
+    /// @param _token The address of the strategy token contract.
+    /// @param _nft The address of the NFT contract.
+    /// @param _buyIncrement The increment at which the token bucket is refilled.
+    constructor(address _token, address _nft, uint256 _buyIncrement) TokenBucket(0, _buyIncrement) {
+        require(_buyIncrement > 0, "Buy increment must be > 0");
+
         token = IStrategyToken(_token);
         nft = ERC721(_nft);
     }
@@ -32,16 +35,12 @@ contract NFTStrategy is AuctionHouse {
         require(nft.ownerOf(tokenId) != address(this), "Already NFT owner");
         _validateBuyNFT(value, tokenId); // extra validation logic
 
-        // check if we have enough surplus
-
-        // Calculate required ETH (nft price + reward)
-        uint256 totalRequired = value + REWARD;
         uint256 balance = address(this).balance;
 
         // pull needed funds from token contract
-        if (balance < totalRequired) {
-            uint256 needed = totalRequired - balance;
-            token.useSurplus(needed);
+        if (balance < value) {
+            uint256 needed = value - balance;
+            _useSurplus(needed);
         }
 
         // Buy the nft
@@ -50,9 +49,15 @@ contract NFTStrategy is AuctionHouse {
         require(nft.ownerOf(tokenId) == address(this), "Not NFT owner");
 
         emit NFTBought(tokenId, value);
+    }
 
-        // pay reward to sender
-        SafeTransferLib.safeTransferETH(msg.sender, REWARD);
+    function availableSurplus() external view returns (uint256) {
+        return _availableTokens();
+    }
+
+    function syncSurplus() external {
+        // TODO: add incentive/reward for syncing surplus
+        _sync();
     }
 
     receive() external payable {} // can receive ETH
@@ -66,5 +71,15 @@ contract NFTStrategy is AuctionHouse {
     function _settleAuction(uint256 tokenId, address buyer, uint256 price) internal override {
         token.lock(price, buyer);
         nft.safeTransferFrom(address(this), buyer, tokenId);
+    }
+
+    function _useSurplus(uint256 amount) internal {
+        _consumeTokens(amount);
+        token.useSurplus(amount);
+        _sync();
+    }
+
+    function _currentCapacity() internal view override returns (uint256) {
+        return token.surplus();
     }
 }

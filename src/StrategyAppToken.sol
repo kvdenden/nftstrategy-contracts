@@ -36,7 +36,7 @@ contract StrategyAppToken is StrategyToken, CreatorTokenBase {
     }
 
     function _tokenType() internal pure override returns (uint16) {
-        return uint16(TOKEN_TYPE_ERC20);
+        return uint16(TOKEN_TYPE_ERC20); // forge-lint: disable-line(unsafe-typecast)
     }
 
     function _requireCallerIsContractOwner() internal view virtual override {

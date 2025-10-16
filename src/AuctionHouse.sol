@@ -74,8 +74,8 @@ abstract contract AuctionHouse is ReentrancyGuard {
     }
 
     function _priceAt(uint256 t) internal pure virtual returns (uint256 price) {
-        int256 exp = -int256(AUCTION_DECAY_RATE) * int256(t);
-        uint256 ratio = uint256(FixedPointMathLib.expWad(exp));
+        int256 exp = -int256(AUCTION_DECAY_RATE) * int256(t); // forge-lint: disable-line(unsafe-typecast)
+        uint256 ratio = uint256(FixedPointMathLib.expWad(exp)); // forge-lint: disable-line(unsafe-typecast)
 
         if (ratio == 0) return 1;
 

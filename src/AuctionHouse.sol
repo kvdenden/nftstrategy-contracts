@@ -5,23 +5,24 @@ import {FixedPointMathLib} from "solady/utils/FixedPointMathLib.sol";
 import {ReentrancyGuard} from "solady/utils/ReentrancyGuard.sol";
 
 abstract contract AuctionHouse is ReentrancyGuard {
-    uint256 public constant AUCTION_START_PRICE = 21_000_000 * 1e17; // 10% of total supply
-    uint256 public constant AUCTION_DECAY_RATE = 1e14;
-
-    event AuctionStarted(uint256 indexed auctionId, uint256 indexed tokenId);
+    event AuctionStarted(
+        uint256 indexed auctionId, uint256 indexed tokenId, uint256 startPrice, uint256 decayRate
+    );
     event AuctionSettled(
         uint256 indexed auctionId, uint256 indexed tokenId, address indexed buyer, uint256 price
     );
 
     Auction public auction;
 
-    uint256 public _nextAuctionId;
+    uint256 private _nextAuctionId;
 
     struct Auction {
         bool active;
         uint256 auctionId;
         uint256 tokenId;
         uint256 startTime;
+        uint256 startPrice;
+        uint256 decayRate;
     }
 
     modifier whenAuctionActive() {
@@ -42,11 +43,20 @@ abstract contract AuctionHouse is ReentrancyGuard {
     {
         _prepareAuction(tokenId);
 
+        uint256 startPrice = _auctionStartPrice();
+        uint256 decayRate = _auctionDecayRate();
+
         auctionId = _nextAuctionId++;
         auction = Auction({
-            active: true, auctionId: auctionId, tokenId: tokenId, startTime: block.timestamp
+            active: true,
+            auctionId: auctionId,
+            tokenId: tokenId,
+            startTime: block.timestamp,
+            startPrice: startPrice,
+            decayRate: decayRate
         });
-        emit AuctionStarted(auctionId, tokenId);
+
+        emit AuctionStarted(auctionId, tokenId, startPrice, decayRate);
     }
 
     function take(uint256 maxPrice) external nonReentrant whenAuctionActive {
@@ -69,19 +79,34 @@ abstract contract AuctionHouse is ReentrancyGuard {
     }
 
     function currentAuctionPrice() public view returns (uint256) {
-        if (!auction.active) return 0;
-        return _priceAt(block.timestamp - auction.startTime);
+        Auction memory auction_ = auction;
+        if (!auction_.active) return 0;
+
+        uint256 t = block.timestamp - auction_.startTime;
+        return _priceAt(t, auction_.startPrice, auction_.decayRate);
     }
 
-    function _priceAt(uint256 t) internal pure virtual returns (uint256 price) {
-        int256 exp = -int256(AUCTION_DECAY_RATE) * int256(t); // forge-lint: disable-line(unsafe-typecast)
+    function _priceAt(uint256 t, uint256 startPrice, uint256 decayRate)
+        internal
+        pure
+        returns (uint256 price)
+    {
+        int256 exp = -int256(decayRate) * int256(t); // forge-lint: disable-line(unsafe-typecast)
         uint256 ratio = uint256(FixedPointMathLib.expWad(exp)); // forge-lint: disable-line(unsafe-typecast)
 
         if (ratio == 0) return 1;
 
-        price = FixedPointMathLib.mulWadUp(AUCTION_START_PRICE, ratio);
+        price = FixedPointMathLib.mulWadUp(startPrice, ratio);
     }
 
     function _prepareAuction(uint256 tokenId) internal virtual;
     function _settleAuction(uint256 tokenId, address buyer, uint256 price) internal virtual;
+
+    function _auctionStartPrice() internal view virtual returns (uint256) {
+        return 21_000_000 * 1e17;
+    }
+
+    function _auctionDecayRate() internal view virtual returns (uint256) {
+        return 1e14;
+    }
 }

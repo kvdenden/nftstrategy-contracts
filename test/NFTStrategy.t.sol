@@ -25,7 +25,7 @@ contract NFTStrategyTest is Test {
     }
 
     function test_syncSurplus() public {
-        strategyToken.mint{value: 0.05 ether}(1e18, address(this));
+        _increaseStrategyTokenSurplus(0.05 ether);
         assertEq(strategyToken.surplus(), 0.05 ether);
 
         nftStrategy.syncSurplus();
@@ -36,7 +36,7 @@ contract NFTStrategyTest is Test {
         vm.roll(block.number + 1);
         assertEq(nftStrategy.availableSurplus(), 0.01 ether);
 
-        strategyToken.mint{value: 0.05 ether}(1e18, address(this));
+        _increaseStrategyTokenSurplus(0.05 ether);
         assertEq(strategyToken.surplus(), 0.1 ether);
 
         vm.roll(block.number + 5);
@@ -49,21 +49,21 @@ contract NFTStrategyTest is Test {
     }
 
     function test_syncSurplus_reward() public {
-        strategyToken.mint{value: 0.05 ether}(1e18, address(this));
+        _increaseStrategyTokenSurplus(0.05 ether);
 
         uint256 balanceBeforeSync = address(this).balance;
         nftStrategy.syncSurplus();
         assertEq(address(this).balance, balanceBeforeSync); // no reward (capacity increase below threshold)
 
         vm.roll(block.number + 1);
-        strategyToken.mint{value: 0.2 ether}(1e18, address(this));
+        _increaseStrategyTokenSurplus(0.2 ether);
 
         balanceBeforeSync = address(this).balance;
         nftStrategy.syncSurplus();
         assertEq(address(this).balance, balanceBeforeSync); // no reward (bucket not full)
 
         vm.roll(block.number + 25); // wait until bucket is full
-        strategyToken.mint{value: 0.2 ether}(1e18, address(this));
+        _increaseStrategyTokenSurplus(0.2 ether);
 
         balanceBeforeSync = address(this).balance;
         uint256 expectedReward = 0.001 ether; // 0.5% of 0.2 ether
@@ -75,7 +75,7 @@ contract NFTStrategyTest is Test {
     }
 
     function test_buyNFT() public {
-        strategyToken.mint{value: 0.05 ether}(1e18, address(this));
+        _increaseStrategyTokenSurplus(0.05 ether);
         _listNFT(42, 0.05 ether);
 
         nftStrategy.syncSurplus();
@@ -92,7 +92,8 @@ contract NFTStrategyTest is Test {
     }
 
     function test_notBuyNFT() public {
-        strategyToken.mint{value: 0.05 ether}(1e18, address(this));
+        _increaseStrategyTokenSurplus(0.05 ether);
+
         _listNFT(42, 0.05 ether);
 
         nftStrategy.syncSurplus();
@@ -100,6 +101,26 @@ contract NFTStrategyTest is Test {
 
         vm.expectRevert();
         _notBuyNFT(42, 0.05 ether);
+    }
+
+    function test_startAuction() public {
+        _increaseStrategyTokenSurplus(1 ether);
+        _listNFT(42, 1 ether);
+
+        nftStrategy.syncSurplus();
+        vm.roll(block.number + 100); // wait until bucket is full
+
+        _buyNFT(42, 1 ether);
+
+        vm.warp(block.timestamp + 24 hours);
+        nftStrategy.startAuction(42);
+
+        assertEq(nftStrategy.currentAuctionPrice(), 200 * 1e18); // 2 * 1 ether / 0.01 ether
+    }
+
+    function _increaseStrategyTokenSurplus(uint256 amount) internal {
+        (bool success,) = address(strategyToken).call{value: amount}("");
+        assertTrue(success);
     }
 
     function _listNFT(uint256 tokenId, uint256 price) internal {

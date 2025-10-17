@@ -52,7 +52,7 @@ contract StrategyToken is ERC20, Receiver, ReentrancyGuard, Pausable {
         _;
     }
 
-    constructor(uint128 _k, address _feeRecipient) {
+    constructor(uint128 _p0, uint128 _k, address _feeRecipient) {
         _initializeOwner(msg.sender); // Initialize owner to deployer
 
         require(_k > 0, "k must be > 0");
@@ -60,7 +60,7 @@ contract StrategyToken is ERC20, Receiver, ReentrancyGuard, Pausable {
         protocolFeeRecipient = _feeRecipient;
 
         curve = QuadraticCurveSpread.Params({
-            p: QuadraticCurve.Params({p0: 0, k: _k}), buySpread: FEE_RATE, sellSpread: FEE_RATE
+            p: QuadraticCurve.Params({p0: _p0, k: _k}), buySpread: FEE_RATE, sellSpread: FEE_RATE
         });
     }
 
@@ -139,6 +139,11 @@ contract StrategyToken is ERC20, Receiver, ReentrancyGuard, Pausable {
 
         _transfer(from, DEAD_ADDRESS, amount);
         emit Lock(msg.sender, from, amount);
+    }
+
+    /// @dev Returns the maximum supply of the token.
+    function maxSupply() public pure returns (uint256) {
+        return MAX_SUPPLY;
     }
 
     /// @dev Returns the amount of tokens locked (sent to dead address)

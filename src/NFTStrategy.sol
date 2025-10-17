@@ -14,8 +14,12 @@ contract NFTStrategy is AuctionHouse, TokenBucket, Receiver {
     IStrategyToken public token;
     ERC721 public nft;
 
+    uint256 public constant AUCTION_INTERVAL = 24 hours;
+
     uint256 public constant SYNC_REWARD_BPS = 50; // 0.5%
     uint256 public constant SYNC_THRESHOLD = 0.1 ether;
+
+    uint256 private _lastBuyPrice;
 
     error NotNFTOwner();
 
@@ -57,6 +61,7 @@ contract NFTStrategy is AuctionHouse, TokenBucket, Receiver {
         require(success, "External call failed");
         require(nft.ownerOf(tokenId) == address(this), "Not NFT owner");
 
+        _lastBuyPrice = value;
         emit NFTBought(tokenId, value);
     }
 
@@ -86,11 +91,22 @@ contract NFTStrategy is AuctionHouse, TokenBucket, Receiver {
 
     function _prepareAuction(uint256 tokenId) internal view override {
         require(nft.ownerOf(tokenId) == address(this), "Not NFT owner");
+        require(auction.startTime + AUCTION_INTERVAL <= block.timestamp, "Auction too soon");
     }
 
     function _settleAuction(uint256 tokenId, address buyer, uint256 price) internal override {
         token.lock(price, buyer);
         nft.safeTransferFrom(address(this), buyer, tokenId);
+    }
+
+    function _auctionStartPrice() internal view override returns (uint256) {
+        uint256 tokenPrice = token.previewMint(1e18);
+        uint256 buyPrice = _lastBuyPrice < 1 ether ? 1 ether : _lastBuyPrice;
+
+        uint256 startPrice = (2 * buyPrice * 1e18) / tokenPrice;
+        uint256 maxPrice = token.maxSupply();
+
+        return startPrice > maxPrice ? maxPrice : startPrice;
     }
 
     function _useSurplus(uint256 amount) internal {

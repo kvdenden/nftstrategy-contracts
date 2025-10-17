@@ -7,7 +7,9 @@ import {TOKEN_TYPE_ERC20} from "@limitbreak/permit-c/Constants.sol";
 import {StrategyToken} from "./StrategyToken.sol";
 
 contract StrategyAppToken is StrategyToken, CreatorTokenBase {
-    constructor(uint128 _k, address _feeRecipient) StrategyToken(_k, _feeRecipient) {}
+    constructor(uint128 _p0, uint128 _k, address _feeRecipient)
+        StrategyToken(_p0, _k, _feeRecipient)
+    {}
 
     function getTransferValidationFunction()
         external

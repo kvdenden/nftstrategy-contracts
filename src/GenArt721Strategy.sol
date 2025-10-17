@@ -2,10 +2,7 @@
 pragma solidity ^0.8.30;
 
 import {NFTStrategy} from "./NFTStrategy.sol";
-
-interface IGenArt721 {
-    function tokenIdToProjectId(uint256 tokenId) external view returns (uint256);
-}
+import {IGenArt721} from "./interfaces/IGenArt721.sol";
 
 contract GenArt721Strategy is NFTStrategy {
     uint256 public projectId;

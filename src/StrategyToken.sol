@@ -5,11 +5,13 @@ import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {ReentrancyGuard} from "solady/utils/ReentrancyGuard.sol";
 
 import {ERC20} from "solady/tokens/ERC20.sol";
+import {Receiver} from "solady/accounts/Receiver.sol";
+
 import {Pausable} from "./utils/Pausable.sol";
 import {QuadraticCurve} from "./lib/QuadraticCurve.sol";
 import {QuadraticCurveSpread} from "./lib/QuadraticCurveSpread.sol";
 
-contract StrategyToken is ERC20, ReentrancyGuard, Pausable {
+contract StrategyToken is ERC20, Receiver, ReentrancyGuard, Pausable {
     using QuadraticCurve for QuadraticCurve.Params;
     using QuadraticCurveSpread for QuadraticCurveSpread.Params;
 
@@ -131,7 +133,11 @@ contract StrategyToken is ERC20, ReentrancyGuard, Pausable {
     function lock(uint256 amount, address from) external {
         require(amount > 0, "Amount must be > 0");
 
-        transferFrom(from, DEAD_ADDRESS, amount);
+        if (msg.sender != from) {
+            _spendAllowance(from, msg.sender, amount);
+        }
+
+        _transfer(from, DEAD_ADDRESS, amount);
         emit Lock(msg.sender, from, amount);
     }
 
@@ -193,8 +199,6 @@ contract StrategyToken is ERC20, ReentrancyGuard, Pausable {
         SafeTransferLib.safeTransferETH(strategy, amount);
         emit SurplusUsed(strategy, amount);
     }
-
-    receive() external payable {} // can receive ETH
 
     function _mintPrice(uint256 supply, uint256 amount) internal view returns (uint256) {
         require(supply + amount <= MAX_SUPPLY, "Max supply reached");

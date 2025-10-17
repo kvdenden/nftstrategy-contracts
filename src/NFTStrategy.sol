@@ -3,13 +3,14 @@ pragma solidity ^0.8.30;
 
 import {ERC721} from "solady/tokens/ERC721.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
+import {Receiver} from "solady/accounts/Receiver.sol";
 
 import {IStrategyToken} from "./interfaces/IStrategyToken.sol";
 
 import {AuctionHouse} from "./AuctionHouse.sol";
 import {TokenBucket} from "./utils/TokenBucket.sol";
 
-contract NFTStrategy is AuctionHouse, TokenBucket {
+contract NFTStrategy is AuctionHouse, TokenBucket, Receiver {
     IStrategyToken public token;
     ERC721 public nft;
 
@@ -37,6 +38,8 @@ contract NFTStrategy is AuctionHouse, TokenBucket {
         payable
         nonReentrant
     {
+        require(target != address(nft), "Invalid target");
+
         // check if we're not the current owner
         require(nft.ownerOf(tokenId) != address(this), "Already NFT owner");
         _validateBuyNFT(value, tokenId); // extra validation logic
@@ -57,6 +60,10 @@ contract NFTStrategy is AuctionHouse, TokenBucket {
         emit NFTBought(tokenId, value);
     }
 
+    function surplus() external view returns (uint256) {
+        return _capacity();
+    }
+
     function availableSurplus() external view returns (uint256) {
         return _availableTokens();
     }
@@ -74,8 +81,6 @@ contract NFTStrategy is AuctionHouse, TokenBucket {
 
         _sync(token.surplus());
     }
-
-    receive() external payable {} // can receive ETH
 
     function _validateBuyNFT(uint256 value, uint256 tokenId) internal view virtual {} // extra nft purchase validation logic
 

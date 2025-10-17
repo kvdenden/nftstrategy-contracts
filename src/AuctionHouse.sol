@@ -41,6 +41,9 @@ abstract contract AuctionHouse is ReentrancyGuard {
         whenAuctionNotActive
         returns (uint256 auctionId)
     {
+        (bool ready,) = _nextAuctionReady();
+        require(ready, "Next auction not ready");
+
         _prepareAuction(tokenId);
 
         uint256 startPrice = _auctionStartPrice();
@@ -78,6 +81,10 @@ abstract contract AuctionHouse is ReentrancyGuard {
         return auction.active;
     }
 
+    function nextAuctionReady() external view returns (bool ready, uint256 waitTime) {
+        return _nextAuctionReady();
+    }
+
     function currentAuctionPrice() public view returns (uint256) {
         Auction memory auction_ = auction;
         if (!auction_.active) return 0;
@@ -101,6 +108,11 @@ abstract contract AuctionHouse is ReentrancyGuard {
 
     function _prepareAuction(uint256 tokenId) internal virtual;
     function _settleAuction(uint256 tokenId, address buyer, uint256 price) internal virtual;
+
+    function _nextAuctionReady() internal view virtual returns (bool ready, uint256 waitTime) {
+        ready = true;
+        waitTime = 0;
+    }
 
     function _auctionStartPrice() internal view virtual returns (uint256) {
         return 21_000_000 * 1e17;

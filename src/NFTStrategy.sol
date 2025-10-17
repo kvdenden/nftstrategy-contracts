@@ -91,12 +91,18 @@ contract NFTStrategy is AuctionHouse, TokenBucket, Receiver {
 
     function _prepareAuction(uint256 tokenId) internal view override {
         require(nft.ownerOf(tokenId) == address(this), "Not NFT owner");
-        require(auction.startTime + AUCTION_INTERVAL <= block.timestamp, "Auction too soon");
     }
 
     function _settleAuction(uint256 tokenId, address buyer, uint256 price) internal override {
         token.lock(price, buyer);
         nft.safeTransferFrom(address(this), buyer, tokenId);
+    }
+
+    function _nextAuctionReady() internal view override returns (bool ready, uint256 waitTime) {
+        ready = auction.startTime + AUCTION_INTERVAL <= block.timestamp;
+        if (!ready) {
+            waitTime = auction.startTime + AUCTION_INTERVAL - block.timestamp;
+        }
     }
 
     function _auctionStartPrice() internal view override returns (uint256) {
